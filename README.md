@@ -1,6 +1,6 @@
 # Kcolc
 
-**Kcolc is "Clock" (spelled backwards)**
+**Kcolc is "Clock" (in reverse)**
 
 
 ## OVERVIEW
