@@ -11,3 +11,5 @@ Until I can find a good generic timer application for Linux, I'm rolling my own.
 ## STATUS
 
 The prototype in Racket scheme already functions as  countdown timer.  The next step it to add an alarm and an action (run a arbitrary user command) upon completion of the countdown.
+
+![Screenshot](docs/Screenshot at 2018-10-04 05-06-29.png)
