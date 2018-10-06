@@ -3,9 +3,9 @@
 ;;; Timer stops upon timout
 ;;; The only valid user action while running is 'stop (possibly +1 min to be added later)
 ;;; TBD
-;;; 1. Clicking display openens dialog to set time.
+;;; 1. Clicking display opens dialog to set time.
 ;;; 2. Connect #'start and #'stop, #reset to buttons.
-;;;    Start/Stop is same button, lable changes depending on mode.
+;;;    Start/Stop is same button, lable (and callback) changes depending on mode.
 (require racket/gui racket/flonum)
 (require (only-in srfi/19 current-time ))
 
@@ -36,29 +36,34 @@
   (send seconds-timer stop)
   (set! time-started #f)
   (set! msecs-remaining %interval-msecs )
+  (set! prev-elapsed 0)
   (update))
 
+;; A toggle associated with the start/stop button
 (define (start-stop)
-  (define (start)
-    (and msecs-remaining (> msecs-remaining 0)
-         (set! time-started  (current-inexact-milliseconds))
-         ;(send interval-timer start %interval-msecs)
-         (send seconds-timer start 1000)))
-  (define  (stop)
-    ;(send interval-timer stop)
+  (define (start) 
+    (when (and msecs-remaining (> msecs-remaining 0))
+      (set! time-started  (current-inexact-milliseconds))
+      (send seconds-timer start 1000)      
+      (set! running #t)
+      (send start-stop-button set-label "Stop")
+      (update)))
+  (define  (stop)        
     (send seconds-timer stop)
+    (set! prev-elapsed (elapsed-msecs))
+    (set! running #f)  
+    (send start-stop-button set-label "Start")
     (update))
-  (if (positive? msecs-remaining) (start) (stop)))
+  (if running (stop) (start)) )
 
 ;;; Initialize to an H:M:S countdown
 ;;; Set the timer only if not already running.
-(define (set-countdown h m s)
-  (if time-started
-      #f       
-      (let ((msecs (*  1000 (+ ( * h 3600) (* m 60) s))))
-        (set! %interval-msecs msecs)
-        (set! msecs-remaining msecs)
-        msecs)))
+(define (set-countdown h m s)      
+  (let ((msecs (*  1000 (+ ( * h 3600) (* m 60) s))))
+    (set! %interval-msecs msecs)
+    (set! msecs-remaining msecs)
+    (update)
+    msecs))
 
 ;;; ------------------------------------------------------------------------------
 (define frame (new frame%
@@ -76,23 +81,31 @@
 (send canvas set-canvas-background (params-bg %params))
 ; Add a horizontal panel to the dialog, with centering for buttons
 (define pane (new horizontal-pane% [parent frame] (stretchable-height #f)
-                                     [alignment '(center center)]))
-(define start-stop-button (new button% (parent pane) (label "Start") (callback (lambda (_btn _evt)(start-stop)))))
-(define reset-button (new button% (parent pane) (label "Reset") (callback (lambda(_b _e)(reset)))))
+                  [alignment '(center center)]))
+(define start-stop-button (new button% (parent pane) (label "Start") 
+                               (callback (lambda (_btn _evt)(start-stop)))))
+(define reset-button (new button% (parent pane) (label "Reset")
+                          (callback (lambda(_b _e)(reset)))))
 
 ;;;=============================================================================
 ;;; ----------------------------------------------------------------------------
 ;; Timer(s)
-;;(define interval-timer (new timer% (interval #f)))
 (define msecs-remaining 0)
 (define %interval-msecs #f)
 
+;;; Accumulated elapsed time while acually running w/o reset
+(define (elapsed-msecs)
+  (+ prev-elapsed (if time-started
+                      (-    (current-inexact-milliseconds) time-started)
+                      0)))
+
 (define seconds-timer
-  (let ((on-seconds-timeout (lambda()
-                              (set! msecs-remaining ( - %interval-msecs (elapsed-msecs)))
-                              (if (positive msecs-remaining)
-                                  (update)
-                                  (begin (send seconds-timer stop) (update))))))
+  (let ((on-seconds-timeout 
+         (lambda()
+           (set! msecs-remaining ( - %interval-msecs (elapsed-msecs)))
+           (if (positive msecs-remaining)
+               (update)
+               (begin (send seconds-timer stop) (set! running #f)(update) )))))
     (new timer% (notify-callback on-seconds-timeout) (interval #f))))
 
 
@@ -101,13 +114,12 @@
 (define (update)
   (set! %params (struct-copy params %params (timestr (msecs->timestr msecs-remaining))))
   (send canvas refresh)
+  (when (not running ) (send start-stop-button set-label "Start")) 
   msecs-remaining)
 
 (define time-started #f)
-(define (elapsed-msecs)
-  (if time-started
-      (-    (current-inexact-milliseconds) time-started)
-      0))
+(define prev-elapsed 0)
+(define running #f)
 
 
 ;;; ----------------------------------------------------------------------------
