@@ -71,14 +71,27 @@
                    [width 512]
                    [height 180]))
 
-(define canvas (new canvas% [parent frame]
-                    [paint-callback
-                     (lambda (canvas dc)              
-                       (send dc set-scale 8 8)
-                       (send dc set-text-foreground (params-fg %params))                
-                       (send dc draw-text (params-timestr %params) 1 0))]))
+;;; ............................. Canvas ..........................................
+;;; Subliclassing canvas% in order to capture events
+(define clock-canvas%
+  (class canvas% 
+    (inherit set-canvas-background)
+    ;; Capture left mouse click...
+    (define/override (on-event mev)
+      (when (eq? (send mev get-event-type) 'left-down ) (println 'ok.)))
 
-(send canvas set-canvas-background (params-bg %params))
+    (super-new [parent frame]
+               [paint-callback
+                (lambda (canvas dc)              
+                  (send dc set-scale 8 8)
+                  (send dc set-text-foreground (params-fg %params))                
+                  (send dc draw-text (params-timestr %params) 1 0))])
+
+    (set-canvas-background (params-bg %params))))
+
+(define canvas (new clock-canvas%))
+
+;;; ...............................................................................
 ; Add a horizontal panel to the dialog, with centering for buttons
 (define pane (new horizontal-pane% [parent frame] (stretchable-height #f)
                   [alignment '(center center)]))
