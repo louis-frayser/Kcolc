@@ -1,12 +1,14 @@
 #lang racket/base
 ;;; A countdown timer
 ;;; Timer stops upon timout
-;;; The only valid user action while running is 'stop (possibly +1 min to be added later)
+;;; The only valid user action while running is 'stop, reset,
+;;;    and possibly +1 min to be added later.
+;;; If necessary,  to install rsond:
+;;;     raco pkg install -i rsound  # -i if for a system-wide install
 ;;; TBD
 ;;; 1. Clicking display opens dialog to set time.
-;;; 2. Connect #'start and #'stop, #reset to buttons.
-;;;    Start/Stop is same button, lable (and callback) changes depending on mode.
-(require racket/gui racket/flonum)
+;;; 2. Audio alarm or exec of exernal prog for alarm sound.
+(require racket/gui racket/flonum rsound)
 (require (only-in srfi/19 current-time ))
 
 ;; ----------------- General Declaraions and Definitions  ----------------------
@@ -33,8 +35,8 @@
 ;;; ================================== UI ========================================
 ;;; -------------------------------- User Commands -------------------------------
 (define (reset)
-  (send seconds-timer stop)
-  (set! time-started #f)
+  (send seconds-timer stop) 
+  (set! time-started #f) (set! running #f)
   (set! msecs-remaining %interval-msecs )
   (set! prev-elapsed 0)
   (update))
@@ -65,6 +67,8 @@
     (update)
     msecs))
 
+(define (do-timeout-actions)
+  (play ding))
 ;;; ------------------------------------------------------------------------------
 (define frame (new frame%
                    [label "Countdown"]
@@ -105,7 +109,10 @@
 ;; Timer(s)
 (define msecs-remaining 0)
 (define %interval-msecs #f)
-
+(define time-started #f)
+(define prev-elapsed 0)
+(define running #f)
+;;; ............................................................................
 ;;; Accumulated elapsed time while acually running w/o reset
 (define (elapsed-msecs)
   (+ prev-elapsed (if time-started
@@ -116,9 +123,12 @@
   (let ((on-seconds-timeout 
          (lambda()
            (set! msecs-remaining ( - %interval-msecs (elapsed-msecs)))
-           (if (positive msecs-remaining)
-               (update)
-               (begin (send seconds-timer stop) (set! running #f)(update) )))))
+           (cond 
+             ( (positive msecs-remaining) (update))
+             (else (send seconds-timer stop) 
+                   (set! running #f)
+                   (update) 
+                   (do-timeout-actions))))))
     (new timer% (notify-callback on-seconds-timeout) (interval #f))))
 
 
@@ -130,9 +140,6 @@
   (when (not running ) (send start-stop-button set-label "Start")) 
   msecs-remaining)
 
-(define time-started #f)
-(define prev-elapsed 0)
-(define running #f)
 
 
 ;;; ----------------------------------------------------------------------------
