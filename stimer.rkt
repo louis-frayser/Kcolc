@@ -8,9 +8,9 @@
 ;;; TBD
 ;;; 1. Clicking display opens dialog to set time.
 ;;; 2. Audio alarm or exec of exernal prog for alarm sound.
-(require racket/gui racket/flonum rsound)
+(require racket/gui racket/flonum #;(only-in rsound play ding)  )
 (require (only-in srfi/19 current-time ))
-
+(define alert "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga")
 ;; ----------------- General Declaraions and Definitions  ----------------------
 (define *taup (make-object color% #xc0 #xc0 #xb0))
 
@@ -68,7 +68,7 @@
     msecs))
 
 (define (do-timeout-actions)
-  (play ding))
+  (play-sound alert #f))
 ;;; ------------------------------------------------------------------------------
 (define frame (new frame%
                    [label "Countdown"]
